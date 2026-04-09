@@ -45,11 +45,71 @@ function scs_render_panel_docente() {
                     if (!empty($student_ids)) {
                         $count = count($student_ids);
                         
-                        // =======================================================
-                        // AQUÍ DEBES PONER TU LÓGICA PARA ENVIAR EL CORREO/PDF
-                        // ej: foreach($student_ids as $student_id) { enviar_correo($student_id); }
-                        // =======================================================
+                        /// NUEVA LÓGICA: Enviar Certificados
+            if (isset($_POST['scs_enviar_certificados'])) {
+                // Doble validación de seguridad
+                if (!current_user_can('edit_others_posts')) {
+                    echo "<div class='scs-error' style='background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>⛔ Error: No tienes permisos para enviar certificados.</div>";
+                } else {
+                    if (!empty($student_ids)) {
+                        $all_approved = true;
+                        $unapproved_names = []; // Guardaremos los nombres de los que fallen
 
+                        // FASE 1: VALIDACIÓN ESTRICTA
+                        foreach ($student_ids as $s_id) {
+                            $is_approved = get_user_meta($s_id, 'scs_aprobado_' . $c_id, true);
+                            
+                            // Si está vacío, significa que no está aprobado
+                            if (empty($is_approved)) {
+                                $all_approved = false;
+                                $user_info = get_userdata($s_id);
+                                $unapproved_names[] = $user_info->display_name; // Guardamos el nombre para el mensaje de error
+                            }
+                        }
+
+                        // FASE 2: DECISIÓN Y ENVÍO
+                        if (!$all_approved) {
+                            // Si alguien no está aprobado, abortamos todo
+                            $nombres_error = implode(', ', $unapproved_names);
+                            echo "<div class='scs-error' style='background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>
+                                    ⛔ <strong>Envío cancelado.</strong><br> 
+                                    Los siguientes estudiantes seleccionados NO están aprobados: <strong>{$nombres_error}</strong>.<br> 
+                                    <em>Debes seleccionar únicamente a estudiantes con estado 'Aprobado' para emitir certificados.</em>
+                                  </div>";
+                        } else {
+                            // Si todos están aprobados, enviamos los correos
+                            $enviados_count = 0;
+                            $course_title = get_the_title($c_id);
+
+                            foreach ($student_ids as $s_id) {
+                                $user_info = get_userdata($s_id);
+                                $to = $user_info->user_email;
+                                $subject = "Certificado disponible: " . $course_title;
+                                
+                                // Cuerpo del correo (Formato HTML básico)
+                                $message = "<h2>¡Felicidades {$user_info->display_name}!</h2>";
+                                $message .= "<p>Te informamos que has aprobado con éxito el curso <strong>'{$course_title}'</strong>.</p>";
+                                $message .= "<p>Tu certificado ya se encuentra disponible. Puedes ingresar a la plataforma en tu perfil de estudiante para descargarlo.</p>";
+                                $message .= "<p>Atentamente,<br>El equipo de formación.</p>";
+                                
+                                // Cabeceras para permitir formato HTML en el correo
+                                $headers = array('Content-Type: text/html; charset=UTF-8');
+
+                                // wp_mail devuelve true si el servidor de correo aceptó el mensaje
+                                if (wp_mail($to, $subject, $message, $headers)) {
+                                    $enviados_count++;
+                                }
+                            }
+                            
+                            echo "<div class='scs-notice' style='background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>
+                                    📧 <strong>¡Éxito!</strong> Se han enviado los avisos de certificación a {$enviados_count} alumno(s).
+                                  </div>";
+                        }
+                    } else {
+                        echo "<div class='scs-error' style='background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>⚠️ Por favor, selecciona al menos un alumno para enviar el certificado.</div>";
+                    }
+                }
+            }
                         echo "<div class='scs-notice' style='background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>📧 (Simulación) Se han procesado los certificados para {$count} alumno(s) seleccionado(s).</div>";
                     } else {
                         echo "<div class='scs-error' style='background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>⚠️ Por favor, selecciona al menos un alumno para enviar el certificado.</div>";
