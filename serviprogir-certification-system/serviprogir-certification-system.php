@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Serviprogir Certification System
  * Description: Panel docente + validación + certificados LearnDash con trazabilidad de fechas.
- * Version: 1.7.1
+ * Version: 1.7.5
  * Author: Juan Cifuentes
  */
 

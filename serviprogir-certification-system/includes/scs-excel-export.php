@@ -9,7 +9,9 @@ function scs_handle_excel_export() {
         $course_title = get_the_title($course_id);
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : 'all';
         
-        // En Excel queremos TODOS los usuarios, sin paginación
+        // Verificamos si el usuario tiene privilegios avanzados
+        $can_manage_certs = current_user_can('edit_others_posts');
+
         $users = get_users([
             'meta_key'     => 'course_' . $course_id . '_access_from',
             'meta_compare' => 'EXISTS'
@@ -26,7 +28,12 @@ function scs_handle_excel_export() {
         $output = fopen('php://output', 'w');
         fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM UTF-8
 
-        fputcsv($output, ['ID', 'Estudiante', 'Email', 'Progreso', 'Estado', 'Fecha de Aprobación']);
+        // Construir encabezados dinámicamente
+        $csv_headers = ['ID', 'Estudiante', 'Email', 'Progreso', 'Estado', 'Fecha de Aprobación'];
+        if ($can_manage_certs) {
+            $csv_headers[] = 'Fecha Envío Certificado'; // Columna extra solo para admin/editores
+        }
+        fputcsv($output, $csv_headers);
 
         foreach ($users as $student) {
             $approval_data = get_user_meta($student->ID, 'scs_aprobado_' . $course_id, true);
@@ -43,7 +50,23 @@ function scs_handle_excel_export() {
                 $percentage = isset($progress['percentage']) ? $progress['percentage'] : 0;
             }
 
-            fputcsv($output, [$student->ID, $student->display_name, $student->user_email, $percentage . '%', $is_approved ? 'Aprobado' : 'Pendiente', $fecha_display]);
+            // Construir la fila dinámica
+            $csv_row = [
+                $student->ID, 
+                $student->display_name, 
+                $student->user_email, 
+                $percentage . '%', 
+                $is_approved ? 'Aprobado' : 'Pendiente', 
+                $fecha_display
+            ];
+
+            // Si es admin/editor, agregamos el dato extra a la fila
+            if ($can_manage_certs) {
+                $cert_enviado = get_user_meta($student->ID, 'scs_certificado_enviado_' . $course_id, true);
+                $csv_row[] = !empty($cert_enviado) ? $cert_enviado : 'No enviado';
+            }
+
+            fputcsv($output, $csv_row);
         }
         fclose($output);
         exit;
