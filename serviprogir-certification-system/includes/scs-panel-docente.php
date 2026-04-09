@@ -18,23 +18,43 @@ function scs_render_panel_docente() {
     $courses = get_user_meta($user_id, 'instructor_courses', true);
     $course_id_selected = isset($_GET['course_id']) ? intval($_GET['course_id']) : 0;
 
-    // 2. Procesar Aprobaciones o Desaprobaciones (Si se envió el formulario)
-    if (isset($_POST['scs_aprobar']) || isset($_POST['scs_desaprobar'])) {
+    // 2. Procesar Acciones (Aprobar, Desaprobar, Enviar Certificados)
+    if (isset($_POST['scs_aprobar']) || isset($_POST['scs_desaprobar']) || isset($_POST['scs_enviar_certificados'])) {
         if (isset($_POST['scs_nonce']) && wp_verify_nonce($_POST['scs_nonce'], 'scs_aprobar_estudiantes')) {
             $c_id = intval($_POST['course_id']);
             $student_ids = isset($_POST['students']) ? array_map('intval', $_POST['students']) : [];
             
-            if (!empty($student_ids)) {
+            // Lógica de Aprobar/Desaprobar
+            if (!empty($student_ids) && (isset($_POST['scs_aprobar']) || isset($_POST['scs_desaprobar']))) {
                 foreach ($student_ids as $s_id) {
                     if (isset($_POST['scs_aprobar'])) {
-                        // Guarda la fecha actual de aprobación
                         update_user_meta($s_id, 'scs_aprobado_' . $c_id, date('d-m-Y H:i:s'));
                     } else {
-                        // Elimina el registro de aprobación
                         delete_user_meta($s_id, 'scs_aprobado_' . $c_id);
                     }
                 }
-                echo "<div class='scs-notice' style='background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>✅ Cambios actualizados con éxito.</div>";
+                echo "<div class='scs-notice' style='background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>✅ Cambios de estado actualizados con éxito.</div>";
+            }
+
+            // NUEVA LÓGICA: Enviar Certificados
+            if (isset($_POST['scs_enviar_certificados'])) {
+                // Doble validación de seguridad (por si un docente manipula el HTML)
+                if (!current_user_can('edit_others_posts')) {
+                    echo "<div class='scs-error' style='background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>⛔ Error: No tienes permisos para enviar certificados.</div>";
+                } else {
+                    if (!empty($student_ids)) {
+                        $count = count($student_ids);
+                        
+                        // =======================================================
+                        // AQUÍ DEBES PONER TU LÓGICA PARA ENVIAR EL CORREO/PDF
+                        // ej: foreach($student_ids as $student_id) { enviar_correo($student_id); }
+                        // =======================================================
+
+                        echo "<div class='scs-notice' style='background: #d1ecf1; color: #0c5460; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>📧 (Simulación) Se han procesado los certificados para {$count} alumno(s) seleccionado(s).</div>";
+                    } else {
+                        echo "<div class='scs-error' style='background: #fff3cd; color: #856404; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>⚠️ Por favor, selecciona al menos un alumno para enviar el certificado.</div>";
+                    }
+                }
             }
         }
     }
@@ -47,7 +67,7 @@ function scs_render_panel_docente() {
     if ($course_id_selected) {
         $status_filter = isset($_GET['status']) ? sanitize_text_field($_GET['status']) : 'all';
         
-        // --- LÓGICA DE PAGINACIÓN OPTIMIZADA ---
+        // Lógica de Paginación
         $per_page = 20;
         $current_page = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
         $offset = ($current_page - 1) * $per_page;
@@ -89,10 +109,8 @@ function scs_render_panel_docente() {
                 $approval_data = get_user_meta($student->ID, 'scs_aprobado_' . $course_id_selected, true);
                 $is_approved = !empty($approval_data);
                 
-                // Aplicar filtros visuales (Opcional, aunque WP_User_Query podría optimizarse para esto a futuro)
                 if (($status_filter == 'approved' && !$is_approved) || ($status_filter == 'pending' && $is_approved)) continue;
 
-                // Calcular progreso en LearnDash
                 $percentage = 0;
                 if (function_exists('learndash_course_progress')) {
                     $progress = learndash_course_progress(['user_id' => $student->ID, 'course_id' => $course_id_selected, 'array' => true]);
@@ -133,8 +151,16 @@ function scs_render_panel_docente() {
                     <div class='scs-bulk-actions' style='display: flex; gap: 10px;'>
                         <button type='button' id='select-all' class='scs-btn scs-btn-secondary'>Todos</button>
                         <button type='button' id='deselect-all' class='scs-btn scs-btn-secondary'>Limpiar</button>
-                        <button type='submit' name='scs_export_excel' class='scs-btn' style='background: #4CAF50; color: #fff; border: none;'>📊 Excel Total</button>
-                    </div>
+                        <button type='submit' name='scs_export_excel' class='scs-btn' style='background: #4CAF50; color: #fff; border: none;'>📊 Excel Total</button>";
+
+            // ========================================================
+            // MAGIA DE PERMISOS: Solo Editores/Admins ven este botón
+            // ========================================================
+            if ( current_user_can( 'edit_others_posts' ) ) { 
+                echo "<button type='submit' name='scs_enviar_certificados' class='scs-btn' style='background: #f39c12; color: #fff; border: none;'>📧 Enviar Certificados</button>";
+            }
+
+            echo "  </div>
                   </div>";
 
             // Tabla
@@ -151,19 +177,14 @@ function scs_render_panel_docente() {
                     <tbody>{$table_rows}</tbody>
                   </table>";
             
-            // --- CONTROLES DE PAGINACIÓN ---
+            // Controles de Paginación
             if ($total_pages > 1) {
                 echo "<div class='scs-pagination' style='margin: 20px 0; text-align: center; display: flex; justify-content: center; gap: 10px; align-items: center;'>";
-                
-                // Mantenemos los parámetros de la URL actual
                 $base_url = add_query_arg(['course_id' => $course_id_selected, 'status' => $status_filter], strtok($_SERVER["REQUEST_URI"], '?'));
-                
                 if ($current_page > 1) {
                     echo "<a href='".add_query_arg('paged', $current_page - 1, $base_url)."' class='scs-btn scs-btn-secondary' style='text-decoration:none; padding: 5px 15px; border: 1px solid #ccc; border-radius: 4px; color: #333;'>« Anterior</a>";
                 }
-                
                 echo "<span class='scs-page-info' style='font-weight: bold;'>Página {$current_page} de {$total_pages}</span>";
-                
                 if ($current_page < $total_pages) {
                     echo "<a href='".add_query_arg('paged', $current_page + 1, $base_url)."' class='scs-btn scs-btn-secondary' style='text-decoration:none; padding: 5px 15px; border: 1px solid #ccc; border-radius: 4px; color: #333;'>Siguiente »</a>";
                 }
@@ -200,5 +221,5 @@ function scs_render_panel_docente() {
 
     echo "</div>"; // Fin scs-main-panel
     
-    return ob_get_clean(); // Devuelve el contenido del búfer al shortcode
+    return ob_get_clean(); 
 }
