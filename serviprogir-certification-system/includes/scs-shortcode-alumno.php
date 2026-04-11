@@ -41,19 +41,6 @@ function scs_render_certificado_alumno($atts) {
 
     ob_start();
 
-    // ==============================================================
-    // TRUCO CSS: Ocultamos el botón nativo de LearnDash
-    // Esto evita que salgan dos botones y confundan al estudiante
-    // ==============================================================
-    echo "<style>
-            /* Clases comunes del botón nativo de LearnDash para ocultarlo */
-            .ld-course-certificate, 
-            .ld-certificate-link,
-            #learndash_course_certificate {
-                display: none !important;
-            }
-          </style>";
-
     // 4. LÓGICA VISUAL SEGÚN ESTADO
     if ($percentage < 100) {
         // A: No ha terminado el 100%
