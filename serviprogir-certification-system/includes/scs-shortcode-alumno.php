@@ -49,9 +49,11 @@ function scs_render_certificado_alumno($atts) {
               </div>";
     } else {
         // B: Terminó el 100%. Verificamos si el admin ya validó la práctica.
+        $es_aprobado = get_user_meta($user_id, 'scs_aprobado_' . $course_id, true);
         $cert_enviado = get_user_meta($user_id, 'scs_certificado_enviado_' . $course_id, true);
 
-        if (empty($cert_enviado)) {
+        // Si NO está aprobado y TAMPOCO se ha enviado el certificado, se retiene.
+        if (empty($es_aprobado) && empty($cert_enviado)) {
             // B.1: Terminado, pero RETENIDO por el docente/admin
             echo "<div style='background: #fff3cd; border-left: 5px solid #ffeeba; padding: 15px; margin-top: 20px; border-radius: 4px; color: #856404;'>
                     <h4 style='margin-top: 0; color: #856404;'>🎓 Curso Online Completado</h4>
