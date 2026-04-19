@@ -57,8 +57,21 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 
+    if (e.target && e.target.classList.contains('btn-ver-pdf')) {
+        const userId = e.target.getAttribute('data-user');
+        const courseId = e.target.getAttribute('data-course');
+
+        // Construimos la URL de WordPress para la acción AJAX que creamos en el Paso 1
+        // scs_vars.ajaxurl debe estar definido mediante wp_localize_script
+        const url = `/wp-admin/admin-ajax.php?action=ver_certificado_pdf&user_id=${userId}&course_id=${courseId}`;
+
+        // Abrimos en una pestaña nueva
+        window.open(url, '_blank');
+    }
+
     // Inicializar visualización
     updateDisplay();
 
     // ... (Mantener aquí el resto de tu lógica de filtros y confirmación de desaprobación)
 });
+

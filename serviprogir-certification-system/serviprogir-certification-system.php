@@ -85,3 +85,49 @@ function scs_automatizar_envio_certificado($data) {
         unlink($pdf_path);
     }
 }
+// 1. Registramos la acción para usuarios autenticados
+add_action('wp_ajax_ver_certificado_pdf', 'scs_ver_certificado_pdf_callback');
+
+function scs_ver_certificado_pdf_callback() {
+    // Validar permisos y datos
+    $user_id = intval($_GET['user_id']);
+    $course_id = intval($_GET['course_id']);
+
+    if (!$user_id || !$course_id) {
+        wp_die('Datos insuficientes.');
+    }
+
+    // Requerir la librería FPDF (asegúrate que la ruta sea correcta)
+    require_once(plugin_dir_path(__FILE__) . 'includes/fpdf/fpdf.php');
+
+    // Configuración del PDF (Horizontal A4)
+    $pdf = new FPDF('L', 'mm', 'A4');
+    $pdf->AddPage();
+    
+    // Imagen de fondo (ajusta la ruta a tu imagen)
+    $bg_path = plugin_dir_path(__FILE__) . 'assets/img/certificado-bg.jpg';
+    if (file_exists($bg_path)) {
+        $pdf->Image($bg_path, 0, 0, 297, 210);
+    }
+
+    // Datos del Estudiante
+    $user_info = get_userdata($user_id);
+    $nombre_completo = utf8_decode($user_info->display_name);
+    $nombre_curso = utf8_decode(get_the_title($course_id));
+
+    // Texto del Certificado
+    $pdf->SetFont('Arial', 'B', 30);
+    $pdf->SetXY(0, 80);
+    $pdf->Cell(297, 10, $nombre_completo, 0, 1, 'C');
+
+    $pdf->SetFont('Arial', '', 18);
+    $pdf->SetXY(0, 100);
+    $pdf->Cell(297, 10, "Por haber completado con exito el curso:", 0, 1, 'C');
+    
+    $pdf->SetFont('Arial', 'I', 22);
+    $pdf->Cell(297, 15, $nombre_curso, 0, 1, 'C');
+
+    // IMPORTANTE: El parámetro 'I' abre el PDF en el navegador
+    $pdf->Output('I', 'Certificado-' . $user_id . '.pdf');
+    exit;
+}

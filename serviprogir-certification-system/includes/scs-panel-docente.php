@@ -179,6 +179,9 @@ function scs_render_panel_docente() {
                 }
                 // ==========================================
 
+                // NUEVO BOTÓN
+                $btn_ver_pdf = "<button type='button' class='btn-ver-pdf' data-user='{$student->ID}' data-course='{$course_id_selected}' style='background-color: #0073aa; color: white; border: none; padding: 5px 10px; cursor: pointer; border-radius: 4px; font-size: 0.9em;'>👁️ Ver PDF</button>";
+
                 $table_rows .= "<tr class='scs-student-row'>
                     <td><input type='checkbox' class='student-checkbox' name='students[]' value='{$student->ID}'></td>
                     <td>{$student->ID}</td>
@@ -193,6 +196,7 @@ function scs_render_panel_docente() {
                         <span class='scs-status-pill {$status_class}'>{$status_text}</span><br>
                         <small style='color:#999'>" . ($is_approved && $approval_data !== "1" ? $approval_data : "") . "</small>
                     </td>
+                    <td>{$btn_ver_pdf}</td>
                     {$cert_column_td}
                 </tr>";
             }
@@ -229,6 +233,7 @@ function scs_render_panel_docente() {
                             <th style='padding: 10px;'>Estudiante</th>
                             <th style='padding: 10px;'>Progreso</th>
                             <th style='padding: 10px;'>Estado y Fecha</th>
+                            <th style='padding: 10px;'>Acciones</th>
                             {$cert_column_th}
                         </tr>
                     </thead>
